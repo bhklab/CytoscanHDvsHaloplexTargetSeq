@@ -5,20 +5,20 @@ runtime: shiny
 output: html_document
 ---
 
-```{r dependencies}
+```{r dependencies, echo=FALSE}
 library(data.table)
 library(ggplot2)
 library(shiny)
 ```
 
-```{r plot_selector}
+```{r plot_selector, echo=FALSE}
 selectInput('which_heatmap', label='Similarity Metric',
     choices=c('Proportion Matching TCN', 'Spearman Correlation', 
         'Weighted Spearman Correlation', 'Spearman Correlation P-Value', 
         'Normalized Mutual Information of TCN', 'Log2-ratio Over RMSE'))
 ```
 
-```{r plot_display}
+```{r plot_display, echo=FALSE}
 comparison_dt <- fread(file.path('data', 'haloplex_to_cytoscan_comparison.csv'))
 
 heatmap_metric <- function(column, midpoint) {
@@ -36,15 +36,41 @@ heatmap_metric <- function(column, midpoint) {
     return(plot)
 }
 
+renderText({
+    switch(input$which_heatmap,
+        'Proportion Matching TCN'='Proportion of segments per chromose which
+            had exactly matching total copy number calls.',
+        'Spearman Correlation'='Spearman rank correlation was used due to
+            violation of the normality assumption for use a Pearson 
+            correlation.', 
+        'Weighted Spearman Correlation'='Spearman rank correlatiom weighted
+            by segnment size',
+        'Spearman Correlation P-Value'='The p-value from cor.test using 
+            two-sided test and Spearman correlatioon', 
+        'Normalized Mutual Information of TCN'='Normalized mutual information,
+            a metric assessing both linear and non-linear correlation between
+            two random variables. More specifically, it asses the amount of 
+            information the observing one random variable provides about the
+            other. In the case where NMI = 1, the random variables are 
+            perfectly correlated or in a more Bayesian sense, sampled from
+            the same distribution.',
+        'Log2-ratio Over RMSE'='Meant as a surrogate metric to asses the error
+            relative to the Log2-ratio. Values greater than one indicate the
+            the RMSE is lower than the estimate (good) where values less than
+            one indicuate the RMSE is greater than the estimate (bad).'
+    )
+})
+
 renderPlot({
     plot_input <- switch(input$which_heatmap,
         'Proportion Matching TCN'=list('pct_match_tcn', 0.5), 
         'Spearman Correlation'=list('spearman_cor', 0), 
-        'Weighted Spearman Correlation=list('spearman_wcor', 0), 
-        'Spearman Correlation P-Value=list('spearman_pvalue', 0.05), , 
-        'Normalized Mutual Information of TCN=list('ncm_tcn', 0.5), 
+        'Weighted Spearman Correlation'=list('spearman_wcor', 0), 
+        'Spearman Correlation P-Value'=list('spearman_pvalue', 0.1), , 
+        'Normalized Mutual Information of TCN'=list('nmi_tcn', 0.5), 
         'Log2-ratio Over RMSE'=list('log2_over_rmse', 1)
     )
     heatmap_metric(plot_input[[1]], plot_input[[2]])
 })
 ```
+`
