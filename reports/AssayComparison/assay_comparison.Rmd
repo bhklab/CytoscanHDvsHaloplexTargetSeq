@@ -1,0 +1,50 @@
+---
+title: 'Haloplex Targeted Sequening vs Cytoscan HD Array: Comparing CNV Calls'
+author: 'Christopher Eeles'
+runtime: shiny
+output: html_document
+---
+
+```{r dependencies}
+library(data.table)
+library(ggplot2)
+library(shiny)
+```
+
+```{r plot_selector}
+selectInput('which_heatmap', label='Similarity Metric',
+    choices=c('Proportion Matching TCN', 'Spearman Correlation', 
+        'Weighted Spearman Correlation', 'Spearman Correlation P-Value', 
+        'Normalized Mutual Information of TCN', 'Log2-ratio Over RMSE'))
+```
+
+```{r plot_display}
+comparison_dt <- fread(file.path('data', 'haloplex_to_cytoscan_comparison.csv'))
+
+heatmap_metric <- function(column, midpoint) {
+
+    plot <- ggplot(comparison_dt, aes(x=sample, y=chrom)) +
+        geom_tile(aes_string(fill=column)) +
+        scale_fill_gradient2(low='blue', mid='white', high='red') +
+        geom_text(aes_string(label=paste0('round(', column, ', 2)'))) +
+        ggtitle(column)
+    
+    if (column == 'spearman_pvalue') {
+        plot <- plot + scale_fill_gradient2(low='red', mid='white', high='blue')
+    }
+    
+    return(plot)
+}
+
+renderPlot({
+    plot_input <- switch(input$which_heatmap,
+        'Proportion Matching TCN'=list('pct_match_tcn', 0.5), 
+        'Spearman Correlation'=list('spearman_cor', 0), 
+        'Weighted Spearman Correlation=list('spearman_wcor', 0), 
+        'Spearman Correlation P-Value=list('spearman_pvalue', 0.05), , 
+        'Normalized Mutual Information of TCN=list('ncm_tcn', 0.5), 
+        'Log2-ratio Over RMSE'=list('log2_over_rmse', 1)
+    )
+    heatmap_metric(plot_input[[1]], plot_input[[2]])
+})
+```
